@@ -3,6 +3,10 @@
 SVG Optimizer — Automatic watcher
 Drop a .svg file into this folder and it will be optimized automatically.
 The original file is kept intact; a new <name>_optimized.svg is created.
+AUTHOR: NICOLA PAOLETTI.
+I LOVE SVG AND I LOVE OPTIMIZATION.
+DONT TOUCH THIS FILE.
+ITALIAN DO IT BETTER
 """
 
 import re
