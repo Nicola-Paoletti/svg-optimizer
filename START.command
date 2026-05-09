@@ -24,8 +24,15 @@ if [ ! -d "$VENV" ]; then
     python3 -m venv "$VENV"
     "$VENV/bin/pip" install --quiet --upgrade pip
     "$VENV/bin/pip" install --quiet -r requirements.txt
-    echo "  Setup complete!"
-    echo ""
+    echo "  Python dependencies installed."
 fi
 
+# Install oxipng via Homebrew if available (extra PNG compression)
+if command -v brew &>/dev/null && ! command -v oxipng &>/dev/null; then
+    echo "  Installing oxipng for better PNG compression..."
+    brew install oxipng --quiet
+    echo "  oxipng installed."
+fi
+
+echo ""
 "$VENV/bin/python3" optimize.py

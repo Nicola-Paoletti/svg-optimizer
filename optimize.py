@@ -9,12 +9,17 @@ import re
 import base64
 import time
 import logging
+import shutil
+import subprocess
 from io import BytesIO
 from pathlib import Path
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from PIL import Image
+
+# Path to oxipng binary (installed via Homebrew)
+OXIPNG = shutil.which("oxipng")
 
 # ── Configuration ───────────────────────────────────────────────
 SCALE        = 2     # 1 = standard, 2 = retina (sharper images on HiDPI screens)
@@ -77,7 +82,20 @@ def optimize_image(img_bytes, target_w, target_h):
         else:
             # PNG: required for Apache Batik / PDF export pipelines
             img.save(buf, format="PNG", optimize=True, compress_level=9)
-            out_fmt = "png"
+            png_bytes = buf.getvalue()
+            # Run oxipng for extra lossless compression if available
+            if OXIPNG:
+                try:
+                    result = subprocess.run(
+                        [OXIPNG, "-o", "4", "--strip", "all", "--quiet", "--stdout", "-"],
+                        input=png_bytes,
+                        capture_output=True,
+                    )
+                    if result.returncode == 0 and len(result.stdout) < len(png_bytes):
+                        png_bytes = result.stdout
+                except Exception:
+                    pass  # oxipng failed silently, keep Pillow output
+            return png_bytes, "png", orig_w, orig_h, new_w, new_h
     else:
         if img.mode not in ("RGB", "L"):
             img = img.convert("RGB")
@@ -172,10 +190,12 @@ class SVGHandler(FileSystemEventHandler):
 
 def main():
     mode_label = "PDF/Batik (PNG)" if TARGET == "pdf" else "Web (WebP)"
+    oxipng_label = f"oxipng {subprocess.run([OXIPNG, '--version'], capture_output=True, text=True).stdout.strip()}" if OXIPNG else "oxipng not found (install via Homebrew)"
     log.info("══════════════════════════════════════")
     log.info(" SVG Optimizer — watching for files...")
     log.info(f" Folder: {WATCH_DIR}")
     log.info(f" Mode: {mode_label}  |  Scale: {SCALE}x  |  JPEG quality: {QUALITY_JPEG}")
+    log.info(f" PNG optimizer: {oxipng_label}")
     log.info(" Drop a .svg file here to optimize it.")
     log.info(" Ctrl+C to quit.")
     log.info("══════════════════════════════════════\n")
